@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Le juste mot</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800;900&display=swap');
+
+  :root{
+    --bg:#0a1024; --bg2:#0c1530;
+    --cell-empty:#15224a; --cell-border:#26356a;
+    --correct:#dd2e26; --present:#f4c430; --absent:#19254c;
+    --text:#eef2ff; --muted:#8b97c8; --accent:#f4c430;
+    --key:#1c2a55; --key-hi:#2a3c75; --ok:#3ddc84;
+    font-family:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    height:100dvh; overflow:hidden;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #15224f 0%, transparent 60%),
+      linear-gradient(180deg,var(--bg) 0%, var(--bg2) 100%);
+    color:var(--text);
+    display:flex; flex-direction:column;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  /* ---------- En-tête ---------- */
+  header{
+    flex:0 0 auto; width:100%; padding:clamp(5px,1.3dvh,14px) 16px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px 14px; flex-wrap:wrap;
+  }
+  .brand{display:flex; align-items:baseline; gap:10px; min-width:0}
+  .brand h1{
+    font-weight:900; font-size:clamp(20px,3.6dvh,32px); letter-spacing:.02em; line-height:1; white-space:nowrap;
+    background:linear-gradient(180deg,#fff 0%, var(--accent) 130%);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .brand .tag{font-size:11px; color:var(--muted); letter-spacing:.18em; text-transform:uppercase; font-weight:700; white-space:nowrap}
+  .header-right{display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end}
+  .stats{display:flex; gap:8px}
+  .stat{
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07);
+    border-radius:12px; padding:clamp(3px,0.7dvh,6px) 12px; text-align:center; min-width:60px;
+  }
+  .stat b{display:block; font-size:clamp(15px,2.4dvh,20px); font-weight:900; line-height:1.1}
+  .stat span{font-size:9px; color:var(--muted); letter-spacing:.14em; text-transform:uppercase; font-weight:700}
+
+  /* Card KED 2026 (lien + QR code) */
+  .ked-card{
+    display:flex; align-items:center; gap:9px; text-decoration:none; color:var(--text); cursor:pointer; font:inherit;
+    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.11);
+    border-radius:13px; padding:5px 11px 5px 5px; transition:background .15s, border-color .15s, transform .08s;
+  }
+  .ked-card:hover{background:rgba(255,255,255,.10); border-color:var(--accent)}
+  .ked-card:active{transform:scale(.98)}
+  .ked-qr{width:clamp(46px,7dvh,72px); height:clamp(46px,7dvh,72px); background:#fff; border-radius:8px; padding:3px; flex-shrink:0}
+  .ked-qr svg{width:100%; height:100%; display:block}
+  .ked-text{display:flex; flex-direction:column; line-height:1.2}
+  .ked-text b{font-size:13px; font-weight:900; letter-spacing:.05em}
+  .ked-text span{font-size:10px; color:var(--accent)}
+  @media (max-width:560px){ .brand .tag{display:none} .ked-text{display:none} }
+
+  /* Vue agrandie du QR KED 2026 */
+  .ked-modal-card{
+    background:linear-gradient(180deg,#101c40,#0c1532); border:1px solid rgba(255,255,255,.12);
+    border-radius:22px; padding:24px; max-width:420px; width:100%; text-align:center;
+    display:flex; flex-direction:column; align-items:center; gap:14px;
+  }
+  .ked-modal-card .eyebrow{font-size:11px; color:var(--accent); letter-spacing:.2em; text-transform:uppercase; font-weight:800}
+  .ked-modal-card h2{font-size:clamp(22px,5vw,28px); font-weight:900; letter-spacing:.04em}
+  .ked-big-qr{display:block; background:#fff; border-radius:16px; padding:14px; width:min(74vmin,330px); height:min(74vmin,330px); box-shadow:0 12px 44px rgba(0,0,0,.45)}
+  #kedQrBig{display:block; width:100%; height:100%}
+  .ked-big-qr svg{width:100%; height:100%; display:block}
+  .ked-url{color:var(--accent); font-weight:800; font-size:15px; text-decoration:none; word-break:break-all}
+  .ked-url:hover{text-decoration:underline}
+  .ked-hint{color:var(--muted); font-size:12.5px; line-height:1.45}
+  .ked-close{margin-top:2px; padding:10px 22px; border-radius:12px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); color:var(--muted); font-weight:700; font-family:inherit; cursor:pointer; text-transform:uppercase; letter-spacing:.05em; font-size:12px}
+  .ked-close:hover{color:var(--text); background:rgba(255,255,255,.1)}
+
+  /* ---------- Corps ---------- */
+  main{flex:1 1 auto; min-height:0; width:100%; display:flex; flex-direction:column; align-items:center; padding:0 12px}
+
+  .toolbar{flex:0 0 auto; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; padding:clamp(4px,1dvh,10px) 0}
+  .btn{border:none; border-radius:12px; cursor:pointer; font-family:inherit; font-weight:800; transition:transform .08s, filter .15s, background .15s}
+  .btn:active{transform:translateY(1px) scale(.99)}
+  .btn-ghost{
+    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09); color:var(--muted);
+    padding:8px 14px; font-size:clamp(11px,1.7dvh,13px); font-weight:700; text-transform:uppercase; letter-spacing:.05em; border-radius:11px;
+  }
+  .btn-ghost:hover{color:var(--text); background:rgba(255,255,255,.09)}
+
+  /* zone plateau : prend tout l'espace restant */
+  .board-wrap{flex:1 1 auto; min-height:0; width:100%; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden}
+  .board{display:grid; gap:7px}
+  .row{display:grid; gap:7px}
+  .cell{
+    position:relative; aspect-ratio:1/1;
+    background:var(--cell-empty); border:2px solid var(--cell-border); border-radius:10px;
+    display:grid; place-items:center; font-weight:900; font-size:var(--fs,24px);
+    text-transform:uppercase; color:var(--text); user-select:none; transition:border-color .12s;
+  }
+  .cell span{position:relative; z-index:1}
+  .cell.filled{border-color:#3a4a86}
+  .cell.active{outline:3px solid var(--accent); outline-offset:-1px; z-index:3}
+  .cell.hint span{color:#5b69a0}
+
+  .cell.known{background:var(--correct); border-color:var(--correct)}
+  .cell.known span{color:#fff}
+  .cell.known::after{content:""; position:absolute; inset:3px; border-radius:7px; box-shadow:inset 0 0 0 2px rgba(255,255,255,.30); z-index:0}
+
+  .cell.correct{background:var(--correct); border-color:var(--correct)}
+  .cell.correct span{color:#fff}
+  .cell.present{background:var(--absent); border-color:var(--absent)}
+  .cell.present::after{content:""; position:absolute; inset:12%; border-radius:50%; background:var(--present); z-index:0}
+  .cell.present span{color:#241a00}
+  .cell.absent{background:var(--absent); border-color:var(--absent)}
+  .cell.absent span{color:#7e8bc0}
+
+  @keyframes flip{0%{transform:rotateX(0)}50%{transform:rotateX(90deg)}100%{transform:rotateX(0)}}
+  .cell.reveal{animation:flip .5s ease both}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+  .row.shake{animation:shake .4s}
+  @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+  .cell.win{animation:pop .45s ease}
+
+  /* résultat de manche : en surimpression sur le plateau (n'occupe pas d'espace) */
+  .result{
+    position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center;
+    gap:14px; padding:18px; text-align:center; z-index:5;
+    background:rgba(8,12,30,.86); border-radius:14px;
+  }
+  .result.show{display:flex}
+  .result .msg{font-size:clamp(20px,4dvh,30px); font-weight:900}
+  .result .msg.won{color:var(--ok)}
+  .result .msg.lost{color:#ff8b7e}
+  .result .reveal-word{font-size:clamp(13px,2dvh,15px); color:var(--muted)}
+  .result .reveal-word b{color:var(--accent); letter-spacing:.12em}
+  .btn-next{padding:13px 26px; font-size:clamp(13px,2.2dvh,15px); text-transform:uppercase; letter-spacing:.05em;
+    background:linear-gradient(180deg,#ffd54a,var(--accent)); color:#2a1f00; border-radius:14px}
+
+  /* ---------- Clavier ---------- */
+  .keyboard{flex:0 0 auto; width:100%; max-width:640px; margin:0 auto; display:flex; flex-direction:column; gap:clamp(4px,0.9dvh,7px); padding:clamp(4px,1dvh,10px) 0 clamp(2px,0.6dvh,6px)}
+  .krow{display:flex; justify-content:center; gap:clamp(4px,1vw,6px)}
+  .key{
+    flex:1 1 0; max-width:clamp(34px,8.5vw,54px); height:clamp(34px,6dvh,56px);
+    background:var(--key); color:var(--text); border:none; border-radius:9px;
+    font-family:inherit; font-weight:800; font-size:clamp(13px,2.4dvh,18px); text-transform:uppercase;
+    cursor:pointer; display:grid; place-items:center; transition:background .12s, transform .06s;
+  }
+  .key:hover{background:var(--key-hi)}
+  .key:active{transform:translateY(1px)}
+  .key.wide{flex:1.7 1 0; max-width:none; font-size:clamp(10px,1.9dvh,13px); letter-spacing:.03em}
+  .key.correct{background:var(--correct); color:#fff}
+  .key.present{background:var(--present); color:#241a00}
+  .key.absent{background:#0c1530; color:#3f4c7d}
+
+  footer{flex:0 0 auto; color:#3a4677; font-size:10px; padding:clamp(2px,0.6dvh,8px) 0; letter-spacing:.04em; text-align:center}
+
+  /* ---------- Modale ---------- */
+  .modal-backdrop{position:fixed; inset:0; background:rgba(4,7,18,.86); display:none; align-items:center; justify-content:center; z-index:100; padding:16px}
+  .modal-backdrop.open{display:flex}
+  .modal-card{background:linear-gradient(180deg,#101c40,#0c1532); border:1px solid rgba(255,255,255,.1); border-radius:20px; max-width:460px; width:100%; padding:24px 22px; max-height:90dvh; overflow:auto}
+  .modal-head{display:flex; justify-content:space-between; align-items:flex-start; gap:12px}
+  .modal-card .eyebrow{font-size:11px; color:var(--accent); letter-spacing:.18em; text-transform:uppercase; font-weight:800; margin-bottom:8px}
+  .modal-card h2{font-size:21px; font-weight:800; margin-bottom:6px}
+  .modal-card .help{color:var(--muted); font-size:13.5px; line-height:1.5; margin-bottom:16px}
+  .toggle-eye{background:none; border:1px solid rgba(255,255,255,.12); color:var(--muted); cursor:pointer; width:40px; height:40px; border-radius:11px; display:grid; place-items:center; font-size:17px; flex-shrink:0}
+  .toggle-eye:hover{background:rgba(255,255,255,.07); color:var(--text)}
+  .word-list{display:flex; flex-direction:column; gap:8px; margin-bottom:12px}
+  .word-row{display:flex; align-items:center; gap:8px}
+  .word-row .lbl{font-size:10.5px; color:var(--muted); width:78px; flex-shrink:0; text-transform:uppercase; letter-spacing:.07em; font-weight:800}
+  .word-row .lbl.cur{color:var(--accent)}
+  .word-row input{flex:1; min-width:0; background:#0a1330; border:2px solid var(--cell-border); color:var(--text); border-radius:11px; padding:11px 12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; outline:none; font-family:inherit; font-size:15px}
+  .word-row input:focus{border-color:var(--accent)}
+  .word-row input.bad{border-color:#ff6b5e}
+  .word-row .rm{background:none; border:none; color:var(--muted); cursor:pointer; font-size:18px; width:32px; height:32px; border-radius:8px; flex-shrink:0}
+  .word-row .rm:hover{background:rgba(255,255,255,.08); color:#ff8b7e}
+  .modal-actions-row{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px}
+  .modal-actions-row .btn-ghost{flex:1}
+  .modal-note{font-size:12px; color:#ff8b7e; font-weight:700; min-height:16px; margin:6px 0}
+  .modal-foot{display:flex; gap:10px; margin-top:10px}
+  .modal-foot .btn-ghost{flex:1}
+  .btn-primary-sm{flex:1.4; padding:13px; border-radius:14px; background:linear-gradient(180deg,#ffd54a,var(--accent)); color:#2a1f00; text-transform:uppercase; letter-spacing:.04em; font-size:14px; border:none; cursor:pointer; font-family:inherit; font-weight:800}
+  .btn-primary-sm:hover{filter:brightness(1.05)}
+
+  .confetti{position:fixed; top:-12px; width:10px; height:14px; z-index:50; pointer-events:none; border-radius:2px}
+  @keyframes fall{to{transform:translateY(110vh) rotate(540deg); opacity:.9}}
+
+  @media (prefers-reduced-motion: reduce){
+    .cell.reveal,.row.shake,.cell.win{animation:none}
+    .confetti{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><h1>Le juste mot</h1><span class="tag">le jeu des mots</span></div>
+  <div class="header-right">
+    <div class="stats">
+      <div class="stat"><b id="statRound">1</b><span>Manche</span></div>
+      <div class="stat"><b id="statScore">0</b><span>Score</span></div>
+    </div>
+    <button class="ked-card" id="kedCard" type="button" title="Agrandir le QR code KED 2026">
+      <span class="ked-qr" id="kedQrSmall"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33"><path fill="#fff" d="M0 0h33v33H0z"/><path fill="#0d1430" d="M2 2h7v1h-7zM10 2h2v1h-2zM14 2h2v1h-2zM18 2h1v1h-1zM20 2h1v1h-1zM24 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h5v1h-5zM19 3h1v1h-1zM21 3h2v1h-2zM24 3h1v1h-1zM30 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM10 4h6v1h-6zM18 4h1v1h-1zM22 4h1v1h-1zM24 4h1v1h-1zM26 4h3v1h-3zM30 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM11 5h1v1h-1zM13 5h1v1h-1zM16 5h1v1h-1zM19 5h1v1h-1zM21 5h2v1h-2zM24 5h1v1h-1zM26 5h3v1h-3zM30 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM19 6h1v1h-1zM21 6h1v1h-1zM24 6h1v1h-1zM26 6h3v1h-3zM30 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM12 7h2v1h-2zM18 7h3v1h-3zM22 7h1v1h-1zM24 7h1v1h-1zM30 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h1v1h-1zM22 8h1v1h-1zM24 8h7v1h-7zM11 9h6v1h-6zM20 9h3v1h-3zM2 10h1v1h-1zM5 10h7v1h-7zM13 10h3v1h-3zM17 10h1v1h-1zM19 10h1v1h-1zM21 10h1v1h-1zM23 10h1v1h-1zM26 10h1v1h-1zM28 10h3v1h-3zM2 11h2v1h-2zM5 11h1v1h-1zM7 11h1v1h-1zM9 11h1v1h-1zM11 11h1v1h-1zM14 11h5v1h-5zM20 11h2v1h-2zM23 11h1v1h-1zM25 11h2v1h-2zM28 11h2v1h-2zM3 12h1v1h-1zM6 12h3v1h-3zM10 12h1v1h-1zM12 12h1v1h-1zM14 12h2v1h-2zM17 12h1v1h-1zM19 12h1v1h-1zM23 12h1v1h-1zM25 12h1v1h-1zM28 12h1v1h-1zM5 13h3v1h-3zM9 13h2v1h-2zM12 13h2v1h-2zM15 13h1v1h-1zM17 13h3v1h-3zM21 13h1v1h-1zM27 13h1v1h-1zM30 13h1v1h-1zM3 14h1v1h-1zM7 14h3v1h-3zM12 14h1v1h-1zM15 14h1v1h-1zM17 14h1v1h-1zM20 14h3v1h-3zM24 14h2v1h-2zM30 14h1v1h-1zM2 15h2v1h-2zM6 15h1v1h-1zM10 15h3v1h-3zM15 15h3v1h-3zM19 15h2v1h-2zM24 15h1v1h-1zM26 15h5v1h-5zM2 16h5v1h-5zM8 16h2v1h-2zM11 16h1v1h-1zM14 16h2v1h-2zM17 16h1v1h-1zM19 16h1v1h-1zM21 16h2v1h-2zM24 16h3v1h-3zM28 16h1v1h-1zM30 16h1v1h-1zM6 17h2v1h-2zM10 17h1v1h-1zM14 17h1v1h-1zM20 17h1v1h-1zM23 17h4v1h-4zM28 17h1v1h-1zM30 17h1v1h-1zM2 18h1v1h-1zM4 18h1v1h-1zM6 18h6v1h-6zM16 18h1v1h-1zM21 18h2v1h-2zM25 18h1v1h-1zM27 18h1v1h-1zM2 19h6v1h-6zM11 19h2v1h-2zM14 19h8v1h-8zM23 19h1v1h-1zM26 19h1v1h-1zM28 19h2v1h-2zM2 20h2v1h-2zM6 20h5v1h-5zM17 20h2v1h-2zM21 20h1v1h-1zM23 20h3v1h-3zM27 20h1v1h-1zM30 20h1v1h-1zM2 21h3v1h-3zM6 21h2v1h-2zM12 21h3v1h-3zM16 21h1v1h-1zM18 21h1v1h-1zM20 21h2v1h-2zM23 21h3v1h-3zM27 21h2v1h-2zM2 22h3v1h-3zM8 22h3v1h-3zM14 22h6v1h-6zM21 22h9v1h-9zM10 23h2v1h-2zM13 23h2v1h-2zM16 23h2v1h-2zM21 23h2v1h-2zM26 23h2v1h-2zM2 24h7v1h-7zM10 24h1v1h-1zM13 24h2v1h-2zM16 24h3v1h-3zM20 24h3v1h-3zM24 24h1v1h-1zM26 24h2v1h-2zM2 25h1v1h-1zM8 25h1v1h-1zM10 25h2v1h-2zM13 25h1v1h-1zM16 25h1v1h-1zM19 25h4v1h-4zM26 25h1v1h-1zM29 25h2v1h-2zM2 26h1v1h-1zM4 26h3v1h-3zM8 26h1v1h-1zM10 26h2v1h-2zM13 26h6v1h-6zM20 26h8v1h-8zM30 26h1v1h-1zM2 27h1v1h-1zM4 27h3v1h-3zM8 27h1v1h-1zM10 27h1v1h-1zM12 27h1v1h-1zM14 27h2v1h-2zM17 27h4v1h-4zM22 27h2v1h-2zM30 27h1v1h-1zM2 28h1v1h-1zM4 28h3v1h-3zM8 28h1v1h-1zM12 28h2v1h-2zM17 28h1v1h-1zM19 28h1v1h-1zM21 28h1v1h-1zM23 28h1v1h-1zM25 28h2v1h-2zM28 28h3v1h-3zM2 29h1v1h-1zM8 29h1v1h-1zM11 29h8v1h-8zM23 29h2v1h-2zM26 29h3v1h-3zM30 29h1v1h-1zM2 30h7v1h-7zM10 30h3v1h-3zM14 30h1v1h-1zM16 30h1v1h-1zM21 30h2v1h-2zM26 30h2v1h-2z"/></svg></span>
+      <span class="ked-text"><b>KED 2026</b><span>tne.reseau-canope.fr</span></span>
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <button class="btn btn-ghost" id="editBtn">✎ Mots</button>
+    <button class="btn btn-ghost" id="saveBtn">💾 Sauvegarder</button>
+    <button class="btn btn-ghost" id="newGameBtn">⟳ Nouvelle partie</button>
+    <button class="btn btn-ghost" id="soundBtn" title="Activer / couper le son">🔊</button>
+  </div>
+
+  <div class="board-wrap" id="boardWrap">
+    <div class="board" id="board"></div>
+    <div class="result" id="result">
+      <div class="msg" id="resultMsg"></div>
+      <div class="reveal-word" id="revealWord"></div>
+      <button class="btn btn-next" id="nextBtn">Manche suivante →</button>
+    </div>
+  </div>
+
+  <div class="keyboard" id="keyboard"></div>
+</main>
+
+<footer>Bien placé&nbsp;=&nbsp;carré rouge · Présent&nbsp;=&nbsp;rond jaune · Absent&nbsp;=&nbsp;gris</footer>
+
+<div class="modal-backdrop" id="modal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow">Configuration — au meneur de jeu</div>
+        <h2>Les mots à faire deviner</h2>
+      </div>
+      <button class="toggle-eye" id="toggleEye" type="button" title="Afficher / masquer">👁️</button>
+    </div>
+    <p class="help">Un mot par manche, de 3 à 15 lettres. Les accents et la casse sont ignorés. Utilise « Sauvegarder » pour enregistrer ces mots dans un nouveau fichier HTML.</p>
+    <div class="word-list" id="wordList"></div>
+    <div class="modal-actions-row">
+      <button class="btn btn-ghost" id="addWord">+ Ajouter une manche</button>
+      <button class="btn btn-ghost" id="randomFill">🎲 Compléter au hasard</button>
+    </div>
+    <div class="modal-note" id="modalNote"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="cancelEdit">Annuler</button>
+      <button class="btn-primary-sm" id="saveEdit">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- vue agrandie du QR code KED 2026 (le lien est actif ici) -->
+<div class="modal-backdrop" id="kedModal">
+  <div class="ked-modal-card">
+    <div class="eyebrow">Pour en savoir plus</div>
+    <h2>KED 2026</h2>
+    <a class="ked-big-qr" href="https://tne.reseau-canope.fr/ked-2026" target="_blank" rel="noopener"><span id="kedQrBig"></span></a>
+    <a class="ked-url" href="https://tne.reseau-canope.fr/ked-2026" target="_blank" rel="noopener">tne.reseau-canope.fr/ked-2026</a>
+    <p class="ked-hint">Scannez le QR code, ou cliquez dessus / sur le lien pour ouvrir la page.</p>
+    <button class="ked-close" id="kedClose" type="button">Fermer</button>
+  </div>
+</div>
+
+<!-- mots sauvegardés (renseignés lors d'un export) -->
+<script type="application/json" id="savedConfig">{"words":[]}</script>
+
+<script>
+"use strict";
+
+const WORD_BANK = [
+  "MAISON","SOLEIL","JARDIN","LUMIERE","VOYAGE","MUSIQUE","FROMAGE","ORANGE",
+  "MONTAGNE","RIVIERE","BONHEUR","CHATEAU","ETOILE","NUAGE","FORET","PLANETE",
+  "GUITARE","CHOCOLAT","FENETRE","BALEINE","TIGRE","DRAGON","PIRATE","TRESOR",
+  "LIBERTE","COURAGE","SOURIRE","PRINTEMPS","AUTOMNE","GALAXIE","DESSERT","POIVRON",
+  "ANNIVERSAIRE","GOUVERNEMENT","BIBLIOTHEQUE","EXTRAORDINAIRE","REFRIGERATEUR","ENCYCLOPEDIES"
+];
+const MAX_ROWS = 6;
+
+const state = {
+  words:[], roundIndex:0, target:"", cols:0,
+  currentRow:0, currentCol:0, guess:[], known:[],
+  finished:false, score:0, keyStatus:{}
+};
+let eyeOpen = true;
+
+function normalize(s){ return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z]/g,""); }
+function randomWord(){ return WORD_BANK[Math.floor(Math.random()*WORD_BANK.length)]; }
+
+function evaluate(guess, target){
+  const n=target.length, res=new Array(n).fill("absent"), counts={};
+  for(const ch of target) counts[ch]=(counts[ch]||0)+1;
+  for(let i=0;i<n;i++){ if(guess[i]===target[i]){ res[i]="correct"; counts[guess[i]]--; } }
+  for(let i=0;i<n;i++){ if(res[i]==="correct") continue; const ch=guess[i]; if(counts[ch]>0){ res[i]="present"; counts[ch]--; } }
+  return res;
+}
+
+/* Report des lettres connues sur la ligne (modifiable, non verrouillé) */
+function newGuessRow(){
+  const arr=new Array(state.cols).fill("");
+  for(let c=0;c<state.cols;c++) arr[c]=state.known[c];
+  return arr;
+}
+
+const $ = id => document.getElementById(id);
+const board=$("board"), boardWrap=$("boardWrap"), keyboard=$("keyboard");
+const resultEl=$("result"), resultMsg=$("resultMsg"), revealWord=$("revealWord"), nextBtn=$("nextBtn");
+const modal=$("modal"), wordList=$("wordList"), modalNote=$("modalNote");
+const kedCard=$("kedCard"), kedModal=$("kedModal"), kedQrSmall=$("kedQrSmall"), kedQrBig=$("kedQrBig");
+
+/* ---------------- Chargement d'une manche ---------------- */
+function loadRound(i){
+  while(state.words.length <= i) state.words.push(randomWord());
+  state.roundIndex=i;
+  state.target=state.words[i];
+  state.cols=state.target.length;
+  state.known=new Array(state.cols).fill("");
+  state.known[0]=state.target[0];
+  state.currentRow=0;
+  state.guess=newGuessRow();
+  state.currentCol=0;
+  state.finished=false;
+  state.keyStatus={};
+  buildBoard();
+  buildKeyboard();
+  resetResult();
+  $("statRound").textContent=i+1;
+  $("statScore").textContent=state.score;
+}
+
+/* ---------------- Plateau : ajusté à l'espace disponible ---------------- */
+function fitBoard(){
+  if(!state.cols) return;
+  const gap = state.cols > 9 ? 5 : 7;
+  const W = boardWrap.clientWidth, H = boardWrap.clientHeight;
+  if(W<=0 || H<=0) return;
+  const byW = (W - gap*(state.cols-1)) / state.cols;
+  const byH = (H - gap*(MAX_ROWS-1)) / MAX_ROWS;
+  const cell = Math.max(10, Math.floor(Math.min(byW, byH)));
+  const totalW = Math.round(cell*state.cols + gap*(state.cols-1));
+  board.style.width = totalW + "px";
+  board.style.gap = gap + "px";
+  board.style.setProperty("--fs", Math.round(cell*0.5) + "px");
+  for(const row of board.children) row.style.gap = gap + "px";
+}
+
+function buildBoard(){
+  board.innerHTML="";
+  for(let r=0;r<MAX_ROWS;r++){
+    const row=document.createElement("div");
+    row.className="row";
+    row.style.gridTemplateColumns=`repeat(${state.cols},1fr)`;
+    for(let c=0;c<state.cols;c++){
+      const cell=document.createElement("div");
+      cell.className="cell";
+      cell.appendChild(document.createElement("span"));
+      row.appendChild(cell);
+    }
+    board.appendChild(row);
+  }
+  fitBoard();
+  renderActiveRow();
+}
+
+function renderHints(){
+  for(let r=state.currentRow+1;r<MAX_ROWS;r++){
+    const row=board.children[r];
+    for(let c=0;c<state.cols;c++){
+      const cell=row.children[c];
+      cell.className="cell";
+      cell.querySelector("span").textContent=state.known[c]||"";
+      if(state.known[c]) cell.classList.add("hint");
+    }
+  }
+}
+
+function renderActiveRow(){
+  renderHints();
+  const row=board.children[state.currentRow];
+  for(let c=0;c<state.cols;c++){
+    const cell=row.children[c];
+    cell.className="cell";
+    const ch=state.guess[c]||"";
+    cell.querySelector("span").textContent=ch;
+    if(ch!=="" && ch===state.known[c]) cell.classList.add("known");
+    else if(ch!=="") cell.classList.add("filled");
+    if(c===state.currentCol) cell.classList.add("active");
+  }
+}
+
+const KEY_ROWS=[
+  ["A","Z","E","R","T","Y","U","I","O","P"],
+  ["Q","S","D","F","G","H","J","K","L","M"],
+  ["ENTER","W","X","C","V","B","N","DEL"]
+];
+function buildKeyboard(){
+  keyboard.innerHTML="";
+  for(const r of KEY_ROWS){
+    const krow=document.createElement("div"); krow.className="krow";
+    for(const k of r){
+      const btn=document.createElement("button");
+      btn.className="key"+(k==="ENTER"||k==="DEL"?" wide":"");
+      btn.textContent=k==="ENTER"?"Entrée":k==="DEL"?"⌫":k;
+      btn.dataset.key=k;
+      btn.addEventListener("click",()=>handleKey(k));
+      krow.appendChild(btn);
+    }
+    keyboard.appendChild(krow);
+  }
+}
+function updateKeyboardColors(guess, statuses){
+  const rank={absent:0,present:1,correct:2};
+  for(let i=0;i<guess.length;i++){
+    const ch=guess[i], st=statuses[i];
+    if(!state.keyStatus[ch]||rank[st]>rank[state.keyStatus[ch]]) state.keyStatus[ch]=st;
+  }
+  for(const btn of keyboard.querySelectorAll(".key")){
+    const k=btn.dataset.key;
+    if(state.keyStatus[k]){ btn.classList.remove("correct","present","absent"); btn.classList.add(state.keyStatus[k]); }
+  }
+}
+
+/* ---------------- Saisie ---------------- */
+function handleKey(k){
+  audio();                       // débloque le son au premier geste de l'utilisateur
+  if(state.finished) return;
+  if(k==="ENTER"){ submitGuess(); return; }
+  if(k==="DEL"){
+    if(state.currentCol>0){ state.currentCol--; state.guess[state.currentCol]=""; renderActiveRow(); }
+    return;
+  }
+  if(/^[A-Z]$/.test(k) && state.currentCol<state.cols){
+    state.guess[state.currentCol]=k;
+    state.currentCol++;
+    renderActiveRow();
+  }
+}
+document.addEventListener("keydown", e=>{
+  if(modal.classList.contains("open") || kedModal.classList.contains("open")) return;
+  if(state.finished) return;
+  if(e.key==="Enter"){ handleKey("ENTER"); return; }
+  if(e.key==="Backspace"){ handleKey("DEL"); return; }
+  const ch=normalize(e.key);
+  if(ch.length===1) handleKey(ch);
+});
+
+/* ---------------- Validation ---------------- */
+function submitGuess(){
+  if(state.guess.some(ch=>ch==="")){
+    const row=board.children[state.currentRow];
+    row.classList.add("shake");
+    setTimeout(()=>row.classList.remove("shake"),400);
+    return;
+  }
+  const guess=state.guess.join("");
+  const statuses=evaluate(state.guess, state.target);
+  const row=board.children[state.currentRow];
+  for(let c=0;c<state.cols;c++){
+    const cell=row.children[c];
+    setTimeout(()=>{ cell.className="cell reveal "+statuses[c]; playStatus(statuses[c]); }, c*180);
+  }
+  state.finished=true;
+  const total=(state.cols-1)*180+500;
+  setTimeout(()=>{
+    updateKeyboardColors(state.guess, statuses);
+    for(let i=0;i<state.cols;i++) if(statuses[i]==="correct") state.known[i]=state.guess[i];
+    const won=guess===state.target;
+    if(won) onWin(row);
+    else if(state.currentRow===MAX_ROWS-1) onLose();
+    else{
+      state.currentRow++;
+      state.guess=newGuessRow();
+      state.currentCol=0;
+      state.finished=false;
+      renderActiveRow();
+    }
+  }, total);
+}
+
+function onWin(row){
+  state.score++;
+  $("statScore").textContent=state.score;
+  for(let c=0;c<state.cols;c++){ const cell=row.children[c]; setTimeout(()=>cell.classList.add("win"), c*70); }
+  launchConfetti();
+  playWin();
+  showResult("BRAVO ! Mot trouvé 🎉","won");
+}
+function onLose(){ playLose(); showResult("Raté ! 6 essais épuisés","lost",`Le mot était <b>${state.target}</b>`); }
+function showResult(text, cls, sub){
+  resultMsg.textContent=text; resultMsg.className="msg "+cls;
+  revealWord.innerHTML=sub||"";
+  setTimeout(()=>resultEl.classList.add("show"), 350);
+}
+function resetResult(){ resultEl.classList.remove("show"); resultMsg.className="msg"; resultMsg.textContent=""; revealWord.innerHTML=""; }
+
+nextBtn.addEventListener("click", ()=>loadRound(state.roundIndex+1));
+$("newGameBtn").addEventListener("click", ()=>{
+  if(!confirm("Démarrer une nouvelle partie ? Le score repart à zéro (les mots configurés sont conservés).")) return;
+  state.score=0; loadRound(0);
+});
+
+/* ---------------- Modale ---------------- */
+$("editBtn").addEventListener("click", openModal);
+$("cancelEdit").addEventListener("click", closeModal);
+$("addWord").addEventListener("click", ()=>{ addWordRow(""); relabel(); });
+$("randomFill").addEventListener("click", ()=>{ for(const inp of wordList.querySelectorAll("input")) if(!inp.value.trim()) inp.value=randomWord(); });
+$("toggleEye").addEventListener("click", ()=>{ eyeOpen=!eyeOpen; for(const inp of wordList.querySelectorAll("input")) inp.type=eyeOpen?"text":"password"; });
+$("saveEdit").addEventListener("click", saveEdit);
+modal.addEventListener("click", e=>{ if(e.target===modal) closeModal(); });
+
+/* ---------------- Vue agrandie KED 2026 ---------------- */
+function openKed(){ kedQrBig.innerHTML = kedQrSmall.innerHTML; kedModal.classList.add("open"); }
+function closeKed(){ kedModal.classList.remove("open"); }
+kedCard.addEventListener("click", openKed);
+$("kedClose").addEventListener("click", closeKed);
+kedModal.addEventListener("click", e=>{ if(e.target===kedModal) closeKed(); });
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape"){ if(kedModal.classList.contains("open")) closeKed(); if(modal.classList.contains("open")) closeModal(); }
+});
+
+function openModal(){
+  modalNote.textContent="";
+  wordList.innerHTML="";
+  state.words.forEach(w=>addWordRow(w));
+  if(state.words.length===0) addWordRow("");
+  relabel();
+  modal.classList.add("open");
+}
+function closeModal(){ modal.classList.remove("open"); }
+function addWordRow(value){
+  const row=document.createElement("div"); row.className="word-row";
+  const lbl=document.createElement("span"); lbl.className="lbl";
+  const inp=document.createElement("input");
+  inp.type=eyeOpen?"text":"password"; inp.value=value||""; inp.maxLength=15;
+  inp.autocomplete="off"; inp.spellcheck=false; inp.placeholder="Mot…";
+  inp.addEventListener("input", ()=>inp.classList.remove("bad"));
+  const rm=document.createElement("button"); rm.className="rm"; rm.textContent="✕"; rm.title="Supprimer cette manche";
+  rm.addEventListener("click", ()=>{ row.remove(); relabel(); });
+  row.append(lbl, inp, rm);
+  wordList.appendChild(row);
+}
+function relabel(){
+  [...wordList.children].forEach((row,i)=>{
+    const lbl=row.querySelector(".lbl");
+    lbl.textContent="Manche "+(i+1)+(i===state.roundIndex?" ●":"");
+    lbl.classList.toggle("cur", i===state.roundIndex);
+  });
+}
+function saveEdit(){
+  const rows=[...wordList.querySelectorAll(".word-row")];
+  const words=[]; let invalid=false;
+  for(const row of rows){
+    const inp=row.querySelector("input");
+    const w=normalize(inp.value);
+    if(inp.value.trim()==="") continue;
+    if(w.length<3||w.length>15){ inp.classList.add("bad"); invalid=true; }
+    else words.push(w);
+  }
+  if(invalid){ modalNote.textContent="Chaque mot doit faire entre 3 et 15 lettres."; return; }
+  if(words.length===0){ modalNote.textContent="Ajoute au moins un mot."; return; }
+  const idx=Math.min(state.roundIndex, words.length-1);
+  const targetChanged=words[idx]!==state.target;
+  state.words=words;
+  closeModal();
+  if(targetChanged||idx!==state.roundIndex) loadRound(idx);
+  else $("statRound").textContent=state.roundIndex+1;
+}
+
+/* ---------------- Sauvegarde HTML ---------------- */
+function saveAsHtml(){
+  const clone=document.documentElement.cloneNode(true);
+  const q=sel=>clone.querySelector(sel);
+  // remettre l'interface dans un état neuf, sans contenu généré
+  q("#board").innerHTML=""; q("#board").removeAttribute("style");
+  q("#keyboard").innerHTML="";
+  q("#wordList").innerHTML="";
+  q("#modal").className="modal-backdrop";
+  q("#result").className="result";
+  q("#resultMsg").className="msg"; q("#resultMsg").textContent="";
+  q("#revealWord").innerHTML="";
+  q("#modalNote").textContent="";
+  q("#statRound").textContent="1"; q("#statScore").textContent="0";
+  q("#soundBtn").textContent="🔊";
+  q("#kedModal").className="modal-backdrop"; q("#kedQrBig").innerHTML="";
+  clone.querySelectorAll(".confetti").forEach(c=>c.remove());
+  // injecter les mots courants
+  q("#savedConfig").textContent=JSON.stringify({words:state.words});
+  const html="<!DOCTYPE html>\n"+clone.outerHTML;
+  const blob=new Blob([html],{type:"text/html;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download="le-juste-mot.html";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+$("saveBtn").addEventListener("click", saveAsHtml);
+$("soundBtn").addEventListener("click", ()=>{
+  soundOn = !soundOn;
+  $("soundBtn").textContent = soundOn ? "🔊" : "🔇";
+  if(soundOn){ audio(); blip(660, 0.12, "triangle", 0.18); }
+});
+
+/* ---------------- Sons (synthétisés, Web Audio) ---------------- */
+let soundOn = true;
+let actx = null;
+function audio(){
+  if(!actx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return null;
+    try{ actx = new AC(); }catch(e){ return null; }
+  }
+  if(actx.state === "suspended") actx.resume();
+  return actx;
+}
+function blip(freq, dur, type, gain, when){
+  if(!soundOn) return;
+  const ctx = audio(); if(!ctx) return;
+  const t = ctx.currentTime + (when || 0);
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type || "sine";
+  o.frequency.setValueAtTime(freq, t);
+  o.connect(g); g.connect(ctx.destination);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(gain || 0.2, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.start(t); o.stop(t + dur + 0.03);
+}
+// son joué pour chaque lettre lors de la révélation
+function playStatus(st){
+  if(st === "correct"){           // bien placée : ding clair, montant
+    blip(740, 0.16, "triangle", 0.22);
+    blip(1110, 0.14, "triangle", 0.15, 0.06);
+  } else if(st === "present"){     // trouvée mais mal placée : note moyenne
+    blip(440, 0.16, "triangle", 0.18);
+  } else {                         // absente : note grave et brève
+    blip(150, 0.13, "sine", 0.16);
+  }
+}
+function playWin(){                 // réussite : petite gamme montante
+  [523, 659, 784, 1047].forEach((f,i)=> blip(f, 0.22, "triangle", 0.22, i*0.12));
+}
+function playLose(){                // échec : notes descendantes
+  [415, 311, 196].forEach((f,i)=> blip(f, 0.32, "triangle", 0.18, i*0.16));
+}
+
+/* ---------------- Confettis ---------------- */
+function launchConfetti(){
+  if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const colors=["#dd2e26","#f4c430","#3ddc84","#5aa9ff","#ffffff"];
+  for(let i=0;i<70;i++){
+    const c=document.createElement("div"); c.className="confetti";
+    c.style.left=Math.random()*100+"vw";
+    c.style.background=colors[Math.floor(Math.random()*colors.length)];
+    const dur=1.6+Math.random()*1.4;
+    c.style.animation=`fall ${dur}s linear forwards`;
+    c.style.animationDelay=(Math.random()*0.3)+"s";
+    c.style.transform=`rotate(${Math.random()*360}deg)`;
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(),(dur+0.4)*1000);
+  }
+}
+
+/* ---------------- Démarrage ---------------- */
+function readSavedWords(){
+  try{
+    const cfg=JSON.parse($("savedConfig").textContent||"{}");
+    if(Array.isArray(cfg.words)){
+      const w=cfg.words.map(normalize).filter(x=>x.length>=3 && x.length<=15);
+      if(w.length) return w;
+    }
+  }catch(e){}
+  return null;
+}
+function relayout(){ fitBoard(); }
+
+function init(){
+  window.addEventListener("resize", relayout);
+  window.addEventListener("load", relayout);
+  if(window.visualViewport) window.visualViewport.addEventListener("resize", relayout);
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(relayout);
+  const saved=readSavedWords();
+  state.words = saved ? saved : [randomWord()];
+  state.score=0;
+  loadRound(0);
+}
+init();
+</script>
+</body>
+</html>
